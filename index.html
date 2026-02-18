@@ -659,47 +659,126 @@ function sortCli(col){
 
 /* ══════════════════════════════════════
    ADMIN — TelefonoAdmin
-   Columnas: A=IdAdmin B=NombreEmpresa C=TelefonoAdmin
-             D=Email   E=Activo        F=logoEmpresa
+   Formato HORIZONTAL:
+     Fila 1 (encabezados): IdAdmin | NombreEmpresa | TelefonoAdmin | Email | Activo | logoEmpresa
+     Fila 2 (valores):     val0    | val1          | val2          | val3  | val4   | val5
+   → Leemos la fila de encabezados (cols) y la fila de datos (rows[0])
+     y los emparejamos columna por columna para mostrarlo como tarjeta.
 ══════════════════════════════════════ */
 async function cargarAdmin(){
   gi('errAdm').innerHTML='';
   gi('adminGrid').innerHTML='<div class="tbl-msg"><div class="spinner"></div>Cargando TelefonoAdmin…</div>';
   try{
-    const json  = await fetchSheet('TelefonoAdmin');
-    const { cols, rows } = parsearTabla(json);
+    const json = await fetchSheet('TelefonoAdmin');
 
-    if(!rows.length){
+    // Leer encabezados desde cols (fila 1 de la hoja)
+    const headers = (json.table?.cols || []).map(c => (c.label||c.id||'').trim()).filter(Boolean);
+
+    // Leer fila de datos (fila 2 = rows[0] en gviz, ya que gviz salta la fila de encabezado)
+    const rawRows = json.table?.rows || [];
+
+    if(!headers.length && !rawRows.length){
       gi('adminGrid').innerHTML='<div class="tbl-msg"><span class="ico">📭</span>La pestaña TelefonoAdmin está vacía.</div>';
       status('TelefonoAdmin: vacía','warn');
       return;
     }
 
-    let html='';
-    rows.forEach((r,i)=>{
-      const activo = String(r[4]||'').toUpperCase()==='TRUE';
+    // Si los headers están vacíos (sin etiquetas en cols), usar nombres conocidos como fallback
+    const COLS = ['IdAdmin','NombreEmpresa','TelefonoAdmin','Email','Activo','logoEmpresa'];
+    const labels = headers.length >= 3 ? headers : COLS;
+
+    // Mapa: nombreCol → valor (de la primera fila de datos)
+    // Puede haber varias filas si hay múltiples admins — mostramos una tarjeta por fila
+    if(!rawRows.length){
+      gi('adminGrid').innerHTML='<div class="tbl-msg"><span class="ico">📭</span>Encabezados encontrados pero sin datos en fila 2.</div>';
+      status('TelefonoAdmin: sin datos','warn');
+      return;
+    }
+
+    // Mostrar encabezados detectados como info de diagnóstico
+    let html=`<div style="grid-column:1/-1;padding:10px 14px;background:var(--b1);border-radius:var(--rs);font-size:.68rem;color:var(--mut);font-family:var(--mono);margin-bottom:4px">
+      <span style="color:var(--acc)">Encabezados detectados (${labels.length}):</span>
+      ${labels.map((l,i)=>`<span style="color:var(--soft)">[${i}]</span> ${l}`).join(' · ')}
+    </div>`;
+
+    // Una tarjeta por cada fila de datos (fila 2 en adelante)
+    rawRows.forEach((row, rowIdx) => {
+      const vals = (row.c || []).map(cell => {
+        if(!cell) return '';
+        return cell.f !== undefined && cell.f !== null ? cell.f : (cell.v !== undefined && cell.v !== null ? String(cell.v) : '');
+      });
+
+      // Construir mapa label → valor usando los índices de COLS
+      const get = (nombre) => {
+        const idx = COLS.findIndex(c => c.toLowerCase() === nombre.toLowerCase());
+        // también buscar en labels detectados
+        const idx2 = labels.findIndex(l => l.toLowerCase().includes(nombre.toLowerCase()));
+        const i = idx >= 0 ? idx : idx2;
+        return i >= 0 ? (vals[i] || '') : '';
+      };
+
+      const idAdmin      = get('IdAdmin')       || vals[0] || '—';
+      const empresa      = get('NombreEmpresa') || vals[1] || '—';
+      const telefono     = get('TelefonoAdmin') || vals[2] || '—';
+      const email        = get('Email')         || vals[3] || '—';
+      const activoRaw    = get('Activo')        || vals[4] || '';
+      const logo         = get('logoEmpresa')   || vals[5] || '';
+
+      const activo = String(activoRaw).toUpperCase() === 'TRUE' || String(activoRaw) === '1';
       const pill   = activo
         ? `<span class="pill pill-ok">✓ Activo</span>`
         : `<span class="pill pill-err">✗ Inactivo</span>`;
 
-      html+=`<div class="admin-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <span class="pill pill-mut" style="font-size:.6rem">Fila ${i+2}</span>
+      const logoHtml = logo
+        ? `<a href="${logo}" target="_blank" style="color:var(--blue)">Ver logo 🖼️</a>`
+        : '<span style="color:var(--mut)">—</span>';
+
+      html += `<div class="admin-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <span class="pill pill-mut" style="font-size:.6rem">Fila ${rowIdx+2}</span>
           ${pill}
         </div>
-        <div class="admin-field"><div class="admin-key">IdAdmin</div><div class="admin-val">${r[0]||'—'}</div></div>
-        <div class="admin-field"><div class="admin-key">NombreEmpresa</div><div class="admin-val big">${r[1]||'—'}</div></div>
-        <div class="admin-field"><div class="admin-key">TelefonoAdmin</div><div class="admin-val" style="color:var(--acc)">${r[2]||'—'}</div></div>
-        <div class="admin-field"><div class="admin-key">Email</div><div class="admin-val">${r[3]||'—'}</div></div>
-        <div class="admin-field"><div class="admin-key">logoEmpresa</div><div class="admin-val">${r[5]?`<a href="${r[5]}" target="_blank" style="color:var(--blue)">Ver logo 🖼️</a>`:'—'}</div></div>
+        <div class="admin-field">
+          <div class="admin-key">IdAdmin</div>
+          <div class="admin-val" style="font-family:var(--mono);font-size:.72rem">${idAdmin}</div>
+        </div>
+        <div class="admin-field">
+          <div class="admin-key">NombreEmpresa</div>
+          <div class="admin-val big">${empresa}</div>
+        </div>
+        <div class="admin-field">
+          <div class="admin-key">TelefonoAdmin</div>
+          <div class="admin-val" style="color:var(--acc);font-family:var(--mono)">${telefono}</div>
+        </div>
+        <div class="admin-field">
+          <div class="admin-key">Email</div>
+          <div class="admin-val" style="font-size:.75rem">${email}</div>
+        </div>
+        <div class="admin-field">
+          <div class="admin-key">Activo (raw)</div>
+          <div class="admin-val" style="font-family:var(--mono);font-size:.7rem">${activoRaw || '—'}</div>
+        </div>
+        <div class="admin-field">
+          <div class="admin-key">logoEmpresa</div>
+          <div class="admin-val">${logoHtml}</div>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--b1)">
+          <div style="font-size:.62rem;color:var(--mut);margin-bottom:6px;font-family:var(--mono)">Valores raw por columna:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${vals.map((v,i)=>`<span style="background:var(--b1);border-radius:4px;padding:2px 7px;font-size:.6rem;font-family:var(--mono);color:var(--soft)"><span style="color:var(--mut)">[${i}]</span> ${v||'∅'}</span>`).join('')}
+          </div>
+        </div>
       </div>`;
     });
+
     gi('adminGrid').innerHTML=html;
-    status('TelefonoAdmin cargado','ok');
-    toast('✓ TelefonoAdmin cargado','ok');
+    status(`TelefonoAdmin: ${rawRows.length} fila(s) de datos`, 'ok');
+    toast(`✓ TelefonoAdmin cargado (${rawRows.length} fila${rawRows.length!==1?'s':''})`, 'ok');
+
   }catch(e){
     gi('adminGrid').innerHTML='<div class="tbl-msg"><span class="ico">💥</span>Error al leer la pestaña</div>';
-    gi('errAdm').innerHTML=`<div class="err-box"><strong>❌ Error al leer TelefonoAdmin</strong>${e.message}</div>`;
+    gi('errAdm').innerHTML=`<div class="err-box"><strong>❌ Error al leer TelefonoAdmin</strong><br>${e.message}<br><br>
+      Tip: verifica que la hoja sea pública o compartida para lectura.</div>`;
     status('Error leyendo TelefonoAdmin','err');
     toast('Error: '+e.message,'err');
   }
