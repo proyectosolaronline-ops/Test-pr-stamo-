@@ -693,10 +693,8 @@ body::before {
 // ─────────────────────────────────────────────
 // CONFIGURACIÓN
 // ─────────────────────────────────────────────
+let SCRIPT_URL = localStorage.getItem('debug_script_url') || 'https://script.google.com/macros/s/AKfycbyaeqN6Dq0JQh4eMtlQQwtnBEy5HdCrJ3HZd6_2RXjx9WPMafj57ajN5SVzBuxnn-OJqQ/exec';
 
-  let SCRIPT_URL = localStorage.getItem('debug_script_url') || 'https://script.google.com/macros/s/AKfycbyaeqN6Dq0JQh4eMtlQQwtnBEy5HdCrJ3HZd6_2RXjx9WPMafj57ajN5SVzBuxnn-OJqQ/exec';
-
-  // --- let SCRIPT_URL = localStorage.getItem('debug_script_url') || 'https://script.google.com/macros/s/TU_URL_AQUI/exec';
 window.addEventListener('DOMContentLoaded', () => {
   if (SCRIPT_URL) {
     document.getElementById('scriptUrl').value = SCRIPT_URL;
