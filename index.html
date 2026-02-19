@@ -576,12 +576,13 @@ function parsearTabla(json){
 ═══════════════════════════════════ */
 async function postScript(payload){
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload)
     });
+    const json = await resp.json();
+    console.log('Respuesta:', json);
+    return json;
   } catch(e) {
     console.warn('fetch error:', e);
   }
