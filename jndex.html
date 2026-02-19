@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debug — SimPréstamo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06080d;
+  --panel: #0c1018;
+  --card: #111722;
+  --border: #1e2a3a;
+  --border2: #253245;
+  --acc: #00e5b0;
+  --acc2: #00b88d;
+  --blue: #3b82f6;
+  --gold: #f59e0b;
+  --red: #f43f5e;
+  --green: #22c55e;
+  --txt: #dce8f5;
+  --mut: #4d617d;
+  --soft: #7a92b0;
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Bebas Neue', sans-serif;
+  --body: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid bg */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,176,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,176,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 32px 20px 80px; }
+
+/* ── HEADER ── */
+.hdr {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.hdr-title { font-family: var(--display); font-size: 3.2rem; letter-spacing: .04em; color: var(--acc); line-height: 1; }
+.hdr-sub { font-size: .72rem; color: var(--mut); font-family: var(--mono); margin-top: 6px; letter-spacing: .08em; }
+.url-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--soft);
+  max-width: 320px;
+}
+.url-badge input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--acc);
+  font-family: var(--mono);
+  font-size: .7rem;
+  width: 220px;
+}
+.url-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex-shrink: 0; transition: background .3s; }
+.url-dot.connected { background: var(--green); }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--panel); border-radius: 10px; padding: 4px; border: 1px solid var(--border); }
+.tab {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  background: none;
+  color: var(--mut);
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: all .2s;
+}
+.tab:hover { color: var(--soft); background: var(--border); }
+.tab.active { background: var(--acc); color: #000; }
+
+/* ── PANEL ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── SECTION ── */
+.section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.section-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.section-title {
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+.section-title em { color: var(--acc); font-style: normal; }
+.section-body { padding: 20px; }
+
+/* ── FORM GRID ── */
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fgrid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.fgrid.cols1 { grid-template-columns: 1fr; }
+@media(max-width: 600px) { .fgrid, .fgrid.cols3 { grid-template-columns: 1fr; } }
+
+.fgroup { display: flex; flex-direction: column; gap: 5px; }
+.fgroup label {
+  font-family: var(--mono);
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+.fgroup label em { color: var(--red); font-style: normal; }
+.inp {
+  background: var(--bg);
+  border: 1.5px solid var(--border2);
+  border-radius: 7px;
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: .82rem;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.inp:focus { border-color: var(--acc); }
+.inp::placeholder { color: var(--mut); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-acc { background: var(--acc); color: #000; }
+.btn-acc:hover { background: var(--acc2); transform: translateY(-1px); }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-blue:hover { background: #2563eb; transform: translateY(-1px); }
+.btn-gold { background: var(--gold); color: #000; }
+.btn-gold:hover { transform: translateY(-1px); }
+.btn-red { background: var(--red); color: #fff; }
+.btn-ghost { background: none; border: 1.5px solid var(--border2); color: var(--soft); }
+.btn-ghost:hover { border-color: var(--acc); color: var(--acc); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+
+/* ── LOG ── */
+.log-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.8;
+  max-height: 380px;
+  overflow-y: auto;
+  margin-top: 18px;
+}
+.log-box:empty::before { content: 'Sin actividad aún...'; color: var(--mut); }
+.log-entry { display: flex; gap: 10px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.03); }
+.log-entry:last-child { border: none; }
+.log-time { color: var(--mut); flex-shrink: 0; }
+.log-tag {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: .65rem;
+  font-weight: 700;
+}
+.tag-ok  { background: rgba(34,197,94,.15);  color: var(--green); }
+.tag-err { background: rgba(244,63,94,.15);  color: var(--red); }
+.tag-inf { background: rgba(59,130,246,.15); color: var(--blue); }
+.tag-wrn { background: rgba(245,158,11,.15); color: var(--gold); }
+.log-msg { color: var(--txt); word-break: break-all; }
+
+/* ── RESULT CARD ── */
+.result-card {
+  display: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: .75rem;
+}
+.result-card.show { display: block; }
+.result-card.ok { border-color: rgba(0,229,176,.3); }
+.result-card.err { border-color: rgba(244,63,94,.3); }
+.result-kv { display: flex; gap: 10px; padding: 4px 0; }
+.result-k { color: var(--mut); min-width: 130px; }
+.result-v { color: var(--acc); word-break: break-all; }
+.result-v.red { color: var(--red); }
+.result-v.gold { color: var(--gold); }
+
+/* ── STATUS BADGES ── */
+.badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.badge-ok  { background: rgba(34,197,94,.12);  color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.badge-err { background: rgba(244,63,94,.12);  color: var(--red);   border: 1px solid rgba(244,63,94,.25); }
+.badge-inf { background: rgba(59,130,246,.12); color: var(--blue);  border: 1px solid rgba(59,130,246,.25); }
+.badge-wrn { background: rgba(245,158,11,.12); color: var(--gold);  border: 1px solid rgba(245,158,11,.25); }
+
+/* ── TEST CHECKLIST ── */
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color .2s;
+}
+.check-item.pass { border-color: rgba(34,197,94,.3); }
+.check-item.fail { border-color: rgba(244,63,94,.3); }
+.check-item.pending { border-color: var(--border); }
+.check-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); flex-shrink: 0; transition: background .3s; }
+.check-item.pass  .check-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.check-item.fail  .check-dot { background: var(--red); }
+.check-item.running .check-dot { background: var(--gold); animation: blink .6s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+.check-name { font-family: var(--mono); font-size: .78rem; font-weight: 700; flex: 1; }
+.check-desc { font-size: .72rem; color: var(--mut); }
+.check-status { font-family: var(--mono); font-size: .68rem; font-weight: 700; }
+.check-item.pass  .check-status { color: var(--green); }
+.check-item.fail  .check-status { color: var(--red); }
+.check-item.running .check-status { color: var(--gold); }
+.check-item.pending .check-status { color: var(--mut); }
+
+/* ── JSON VIEWER ── */
+.json-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: .73rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+/* ── PROGRESS ── */
+.progress-wrap { margin: 16px 0 0; }
+.progress-label { font-family: var(--mono); font-size: .65rem; color: var(--mut); margin-bottom: 6px; letter-spacing: .06em; text-transform: uppercase; }
+.progress-bar { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--acc), var(--blue)); width: 0; transition: width .4s ease; border-radius: 99px; }
+
+/* ── DIVIDER ── */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">DEBUG PANEL</div>
+      <div class="hdr-sub">SIM PRÉSTAMO — VALIDACIÓN DE REGISTRO EN SHEETS</div>
+    </div>
+    <div class="url-badge">
+      <div class="url-dot" id="urlDot"></div>
+      <span style="color:var(--mut);flex-shrink:0">URL:</span>
+      <input type="text" id="scriptUrl" placeholder="Pega tu URL del Apps Script aquí" oninput="guardarUrl(this.value)">
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('checklist',this)">✅ Checklist</button>
+    <button class="tab" onclick="switchTab('test1',this)">👤 Cliente Nuevo</button>
+    <button class="tab" onclick="switchTab('test2',this)">🔁 Anti-Duplicado</button>
+    <button class="tab" onclick="switchTab('test3',this)">📧 Email + WA</button>
+    <button class="tab" onclick="switchTab('test4',this)">🛠️ Manual</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PANEL 1 — CHECKLIST COMPLETO               -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="panel active" id="panel-checklist">
+
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-title">🧪 Tests de validación — <em>Ejecuta todos en orden</em></span>
+        <button class="btn btn-acc" onclick="runAllTests()">▶ Ejecutar Todos</button>
+      </div>
+      <div class="section-body">
+
+        <div class="progress-wrap" id="allProgress" style="display:none">
+          <div class="progress-label">Progreso general</div>
+          <div class="progress-bar"><div class="progress-fill" id="allFill"></div></div>
+        </div>
+
+        <div class="checklist" style="margin-top:16px">
+
+          <div class="check-item pending" id="chk-url">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">URL del Apps Script configurada</div>
+              <div class="check-desc">Verifica que hayas pegado la URL en el campo superior</div>
+            </div>
+            <div class="check-status">PENDIENTE</div>
+          </div>
+
+          <div class="check-item pending" id="chk-conexion">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Conexión con Apps Script (GET)</div>
+              <div class="check-desc">Llama ?tipo=capital — confirma que el script responde OK</div>
+            </div>
+            <div class="check-status">PENDIENTE</div>
+          </div>
+
+          <div class="check-item pending" id="chk-cliente-nuevo">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Registro cliente NUEVO en Sheets</div>
+              <div class="check-desc">POST con datos completos → debe crear fila en Clientes + Simulaciones</div>
+            </div>
+            <div class="check-status">PENDIENTE</div>
+          </div>
+
+          <div class="check-item pending" id="chk-anti-dup-tel">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Anti-duplicado por TELÉFONO</div>
+              <div class="check-desc">Mismo teléfono → reutiliza IdCliente existente, incrementa CantidadSimulaciones</div>
+            </div>
+            <div class="check-status">PENDIENTE</div>
+          </div>
+
+          <div class="check-item pending" id="chk-anti-dup-email">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Anti-duplicado por CORREO</div>
+              <div class="check-desc">Mismo correo, teléfono diferente → mismo IdCliente</div>
+            </div>
+            <div class="check-status">PENDIENTE</div>
+          </div>
+
+          <div class="check-item pending" id="chk-sim-sheet">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Simulación registrada en hoja Simulaciones</div>
+              <div class="check-desc">Verifica que llega idSimulacion con prefijo SIM-</div>
+            </div>
+            <div class="check-status">PENDIENTE</div>
+          </div>
+
+          <div class="check-item pending" id="chk-email">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Email con botón WhatsApp enviado</div>
+              <div class="check-desc">El script llama MailApp.sendEmail — revisa bandeja de entrada del admin</div>
+            </div>
+            <div class="check-status">MANUAL — revisa email</div>
+          </div>
+
+        </div>
+
+        <div id="chk-log" class="log-box" style="margin-top:20px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PANEL 2 — CLIENTE NUEVO                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="panel" id="panel-test1">
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-title">👤 Test — <em>Registro de cliente nuevo</em></span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:.8rem;color:var(--soft);margin-bottom:16px">
+          Envía un POST completo con datos únicos. Debe crear una fila nueva en <strong style="color:var(--acc)">Clientes</strong> y en <strong style="color:var(--acc)">Simulaciones</strong>.
+        </p>
+        <div class="fgrid">
+          <div class="fgroup">
+            <label>Nombre <em>*</em></label>
+            <input class="inp" id="t1-nombre" value="María García Test" placeholder="Nombre completo">
+          </div>
+          <div class="fgroup">
+            <label>Teléfono <em>*</em></label>
+            <input class="inp" id="t1-telefono" value="4421234567" placeholder="10 dígitos">
+          </div>
+          <div class="fgroup">
+            <label>Correo <em>*</em></label>
+            <input class="inp" id="t1-correo" value="maria.test@gmail.com" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="fgroup">
+            <label>Capital <em>*</em></label>
+            <input class="inp" id="t1-capital" value="5000" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Días <em>*</em></label>
+            <input class="inp" id="t1-dias" value="27" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Interés % <em>*</em></label>
+            <input class="inp" id="t1-interes" value="21.5" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Interés $ <em>*</em></label>
+            <input class="inp" id="t1-interesM" value="1075" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Total <em>*</em></label>
+            <input class="inp" id="t1-total" value="6075" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Pago Diario <em>*</em></label>
+            <input class="inp" id="t1-pagoDiario" value="225" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Dirección</label>
+            <input class="inp" id="t1-dir" value="Querétaro, Qro. México">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-acc" onclick="testClienteNuevo()">▶ Enviar POST</button>
+          <button class="btn btn-ghost" onclick="randomizarT1()">🎲 Aleatorizar datos</button>
+        </div>
+        <div class="result-card" id="res-t1"></div>
+        <div class="log-box" id="log-t1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PANEL 3 — ANTI-DUPLICADOS                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="panel" id="panel-test2">
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-title">🔁 Test — <em>Anti-duplicados</em></span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:.8rem;color:var(--soft);margin-bottom:16px">
+          Primero envía el <strong style="color:var(--gold)">Registro Base</strong>. Luego prueba los dos escenarios de duplicado. El IdCliente debe ser el <strong style="color:var(--acc)">mismo</strong> en los 3 casos.
+        </p>
+
+        <div class="fgrid">
+          <div class="fgroup">
+            <label>Nombre base</label>
+            <input class="inp" id="dup-nombre" value="Carlos Duplicado">
+          </div>
+          <div class="fgroup">
+            <label>Teléfono base</label>
+            <input class="inp" id="dup-tel" value="4429998877">
+          </div>
+          <div class="fgroup">
+            <label>Correo base</label>
+            <input class="inp" id="dup-correo" value="carlos.dup@test.com">
+          </div>
+          <div class="fgroup">
+            <label>Capital</label>
+            <input class="inp" id="dup-capital" value="3000" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Total</label>
+            <input class="inp" id="dup-total" value="3960" type="number">
+          </div>
+          <div class="fgroup">
+            <label>Pago Diario</label>
+            <input class="inp" id="dup-pagoDiario" value="99" type="number">
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-acc" onclick="testBase()">1️⃣ Registro Base</button>
+          <button class="btn btn-blue" onclick="testDupTelefono()">2️⃣ Mismo Teléfono</button>
+          <button class="btn btn-gold" onclick="testDupCorreo()">3️⃣ Mismo Correo</button>
+        </div>
+
+        <div class="divider"></div>
+        <div id="dup-comparador" style="display:none">
+          <p class="section-title" style="margin-bottom:12px">Comparador de IDs</p>
+          <div class="fgrid cols3">
+            <div class="fgroup">
+              <label>ID — Registro Base</label>
+              <input class="inp" id="cmp-id1" readonly placeholder="—">
+            </div>
+            <div class="fgroup">
+              <label>ID — Mismo Teléfono</label>
+              <input class="inp" id="cmp-id2" readonly placeholder="—">
+            </div>
+            <div class="fgroup">
+              <label>ID — Mismo Correo</label>
+              <input class="inp" id="cmp-id3" readonly placeholder="—">
+            </div>
+          </div>
+          <div id="cmp-resultado" style="margin-top:12px;font-family:var(--mono);font-size:.8rem;padding:10px 14px;border-radius:8px;display:none"></div>
+        </div>
+
+        <div class="log-box" id="log-t2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PANEL 4 — EMAIL + WHATSAPP                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="panel" id="panel-test3">
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-title">📧 Test — <em>Notificación email + botón WhatsApp</em></span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:.8rem;color:var(--soft);margin-bottom:16px">
+          Envía un registro completo y verifica que llega el email al admin con el botón de WhatsApp pre-cargado. Revisa la bandeja de <strong style="color:var(--acc)">CONFIG.EMAIL_DESTINO</strong> en tu Apps Script.
+        </p>
+
+        <div class="badge-row">
+          <span class="badge badge-wrn">⚠️ Requiere MailApp habilitado en el proyecto</span>
+          <span class="badge badge-inf">📬 El email llega al EMAIL_DESTINO del CONFIG</span>
+        </div>
+
+        <div class="fgrid">
+          <div class="fgroup">
+            <label>Nombre</label>
+            <input class="inp" id="t3-nombre" value="Test Email WhatsApp">
+          </div>
+          <div class="fgroup">
+            <label>Teléfono</label>
+            <input class="inp" id="t3-tel" value="4420001111">
+          </div>
+          <div class="fgroup">
+            <label>Correo</label>
+            <input class="inp" id="t3-correo" value="testmail@debug.com">
+          </div>
+          <div class="fgroup">
+            <label>Notas</label>
+            <input class="inp" id="t3-notas" value="Test de email y botón WhatsApp">
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-acc" onclick="testEmailWA()">📨 Enviar y verificar</button>
+        </div>
+
+        <div class="result-card" id="res-t3"></div>
+
+        <div class="divider"></div>
+        <p style="font-size:.75rem;color:var(--mut);font-family:var(--mono)">CHECKLIST MANUAL POST-ENVÍO</p>
+        <div class="checklist" style="margin-top:10px">
+          <div class="check-item pending" id="man-email">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Email recibido en bandeja del admin</div>
+              <div class="check-desc">Debe tener diseño HTML con secciones: Cliente, Simulación, botón verde WhatsApp</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:.65rem;padding:5px 10px" onclick="marcarManual('man-email',this)">Marcar ✓</button>
+          </div>
+          <div class="check-item pending" id="man-wa-btn">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Botón WhatsApp abre chat con mensaje pre-cargado</div>
+              <div class="check-desc">El mensaje debe incluir: nombre, teléfono, capital, total, pago diario, ID simulación</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:.65rem;padding:5px 10px" onclick="marcarManual('man-wa-btn',this)">Marcar ✓</button>
+          </div>
+          <div class="check-item pending" id="man-sheet-row">
+            <div class="check-dot"></div>
+            <div style="flex:1">
+              <div class="check-name">Fila visible en Google Sheet → pestaña Simulaciones</div>
+              <div class="check-desc">Verificar columnas A–T con datos correctos y formatos numéricos aplicados</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:.65rem;padding:5px 10px" onclick="marcarManual('man-sheet-row',this)">Marcar ✓</button>
+          </div>
+        </div>
+
+        <div class="log-box" id="log-t3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PANEL 5 — MANUAL RAW                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="panel" id="panel-test4">
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-title">🛠️ POST Manual — <em>JSON libre</em></span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:.8rem;color:var(--soft);margin-bottom:16px">
+          Envía cualquier payload JSON directamente. Útil para reproducir casos edge o probar el panel debug del Apps Script.
+        </p>
+        <div class="fgrid cols1">
+          <div class="fgroup">
+            <label>Payload JSON</label>
+            <textarea class="inp" id="raw-json" rows="12" style="resize:vertical;font-size:.72rem">{
+  "nombre": "Test Manual",
+  "telefono": "4420000000",
+  "correo": "manual@test.com",
+  "capital": 5000,
+  "dias": 27,
+  "interesPct": 21.5,
+  "interesM": 1075,
+  "total": 6075,
+  "pagoDiario": 225,
+  "notas": "Test manual raw",
+  "fecha": "Ahora"
+}</textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-acc" onclick="enviarRaw()">▶ Enviar POST</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('raw-json').value = JSON.stringify(JSON.parse(document.getElementById('raw-json').value), null, 2)">Formatear JSON</button>
+          <button class="btn btn-ghost" onclick="cargarEjemploUpsert()">Cargar upsert_cliente</button>
+        </div>
+        <div id="raw-result" class="json-block" style="margin-top:16px;display:none"></div>
+        <div class="log-box" id="log-raw"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIGURACIÓN
+// ─────────────────────────────────────────────
+let SCRIPT_URL = localStorage.getItem('debug_script_url') || '';
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (SCRIPT_URL) {
+    document.getElementById('scriptUrl').value = SCRIPT_URL;
+    checkUrlDot();
+  }
+});
+
+function guardarUrl(val) {
+  SCRIPT_URL = val.trim();
+  localStorage.setItem('debug_script_url', SCRIPT_URL);
+  checkUrlDot();
+}
+
+function checkUrlDot() {
+  const dot = document.getElementById('urlDot');
+  dot.className = SCRIPT_URL.includes('script.google.com') ? 'url-dot connected' : 'url-dot';
+}
+
+// ─────────────────────────────────────────────
+// UTILIDADES
+// ─────────────────────────────────────────────
+function switchTab(panelId, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + panelId).classList.add('active');
+  btn.classList.add('active');
+}
+
+function ts() {
+  return new Date().toLocaleTimeString('es-MX', {hour12:false});
+}
+
+function log(boxId, msg, type = 'inf') {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const tags = { ok:'tag-ok', err:'tag-err', inf:'tag-inf', wrn:'tag-wrn' };
+  const labels = { ok:'OK', err:'ERR', inf:'INFO', wrn:'WARN' };
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${ts()}</span><span class="log-tag ${tags[type]}">${labels[type]}</span><span class="log-msg">${msg}</span>`;
+  box.appendChild(entry);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setCheck(id, state, statusText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'check-item ' + state;
+  el.querySelector('.check-status').textContent = statusText;
+}
+
+function showResult(id, data, ok) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'result-card show ' + (ok ? 'ok' : 'err');
+  el.innerHTML = Object.entries(data).map(([k,v]) =>
+    `<div class="result-kv"><span class="result-k">${k}</span><span class="result-v ${ok?'':'red'}">${JSON.stringify(v)}</span></div>`
+  ).join('');
+}
+
+async function postScript(payload, logId) {
+  if (!SCRIPT_URL) {
+    log(logId, 'URL no configurada — pega la URL del Apps Script arriba', 'err');
+    throw new Error('URL vacía');
+  }
+  log(logId, `POST → ${JSON.stringify(payload).substring(0,120)}...`, 'inf');
+  const resp = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const json = await resp.json();
+  log(logId, `Respuesta: ${JSON.stringify(json).substring(0,200)}`, json.success ? 'ok' : 'err');
+  return json;
+}
+
+async function getScript(tipo, logId) {
+  if (!SCRIPT_URL) throw new Error('URL vacía');
+  log(logId, `GET ?tipo=${tipo}`, 'inf');
+  const resp = await fetch(`${SCRIPT_URL}?tipo=${tipo}`);
+  const json = await resp.json();
+  log(logId, `Respuesta GET ${tipo}: ${JSON.stringify(json).substring(0,120)}`, json.success ? 'ok' : 'err');
+  return json;
+}
+
+function basePayload(overrides = {}) {
+  return {
+    capital: 5000, dias: 27, interesPct: 21.5,
+    interesM: 1075, total: 6075, pagoDiario: 225,
+    direccion: 'Querétaro, Qro. México',
+    latitud: 20.5888, longitud: -100.3899,
+    notas: 'Test desde debug panel',
+    fecha: new Date().toLocaleString('es-MX'),
+    estado: 'Nuevo',
+    ...overrides
+  };
+}
+
+// ─────────────────────────────────────────────
+// PANEL 1 — CHECKLIST COMPLETO
+// ─────────────────────────────────────────────
+let idClienteCreado = null;
+let idSimulacionCreada = null;
+
+async function runAllTests() {
+  const logId = 'chk-log';
+  document.getElementById(logId).innerHTML = '';
+  document.getElementById('allProgress').style.display = 'block';
+
+  const steps = [
+    chkUrl,
+    chkConexion,
+    chkClienteNuevo,
+    chkAntiDupTel,
+    chkAntiDupCorreo,
+    chkSimSheet
+  ];
+
+  for (let i = 0; i < steps.length; i++) {
+    document.getElementById('allFill').style.width = ((i / steps.length) * 100) + '%';
+    await steps[i](logId);
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  document.getElementById('allFill').style.width = '100%';
+  setCheck('chk-email', 'pending', 'REVISA BANDEJA');
+  log(logId, '— Tests automáticos completados. Verifica el email manualmente —', 'wrn');
+}
+
+async function chkUrl(logId) {
+  setCheck('chk-url', 'running', 'VERIFICANDO...');
+  if (SCRIPT_URL && SCRIPT_URL.includes('script.google.com')) {
+    setCheck('chk-url', 'pass', 'PASS ✓');
+    log(logId, 'URL configurada correctamente', 'ok');
+  } else {
+    setCheck('chk-url', 'fail', 'FAIL ✗');
+    log(logId, 'URL no válida — necesita script.google.com', 'err');
+    throw new Error('URL inválida');
+  }
+}
+
+async function chkConexion(logId) {
+  setCheck('chk-conexion', 'running', 'CONECTANDO...');
+  try {
+    const res = await getScript('capital', logId);
+    if (res.success && res.data?.capital) {
+      setCheck('chk-conexion', 'pass', 'PASS ✓');
+      log(logId, `GET exitoso — capitales disponibles: ${res.data.capital.join(', ')}`, 'ok');
+    } else {
+      throw new Error('Respuesta inesperada');
+    }
+  } catch(e) {
+    setCheck('chk-conexion', 'fail', 'FAIL ✗');
+    log(logId, 'Error de conexión: ' + e.message, 'err');
+    throw e;
+  }
+}
+
+async function chkClienteNuevo(logId) {
+  setCheck('chk-cliente-nuevo', 'running', 'ENVIANDO...');
+  const ts_id = Date.now();
+  try {
+    const res = await postScript(basePayload({
+      nombre: `Debug Test ${ts_id}`,
+      telefono: `44299${String(ts_id).slice(-5)}`,
+      correo: `debug.${ts_id}@test.com`
+    }), logId);
+
+    if (res.success && res.data?.id && res.data?.idCliente) {
+      idClienteCreado    = res.data.idCliente;
+      idSimulacionCreada = res.data.id;
+      setCheck('chk-cliente-nuevo', 'pass', 'PASS ✓');
+      log(logId, `Cliente creado: ${idClienteCreado}`, 'ok');
+      log(logId, `Simulación: ${idSimulacionCreada}`, 'ok');
+      log(logId, `Es cliente nuevo: ${res.data.esClienteNuevo}`, res.data.esClienteNuevo ? 'ok' : 'wrn');
+    } else {
+      throw new Error(res.message || 'Sin id en respuesta');
+    }
+  } catch(e) {
+    setCheck('chk-cliente-nuevo', 'fail', 'FAIL ✗');
+    log(logId, 'Error: ' + e.message, 'err');
+    throw e;
+  }
+}
+
+async function chkAntiDupTel(logId) {
+  if (!idClienteCreado) {
+    setCheck('chk-anti-dup-tel', 'fail', 'SKIP (sin ID previo)');
+    return;
+  }
+  setCheck('chk-anti-dup-tel', 'running', 'PROBANDO...');
+  try {
+    // Recuperar teléfono del test anterior leyendo el log
+    const prevTel = document.getElementById('chk-log').querySelectorAll('.log-msg');
+    // Enviamos con mismo idCliente como referencia buscando por teléfono
+    // Creamos un payload con mismo teléfono que el test anterior
+    const ts_id = Date.now();
+    const tel = `44299${String(ts_id - 1000).slice(-5)}`; // mismo que el anterior
+
+    // Para este test usamos el teléfono exacto que guardamos
+    const res = await postScript(basePayload({
+      nombre: `Duplicado Tel ${ts_id}`,
+      telefono: window._lastTelefono || tel,
+      correo: `otro.${ts_id}@test.com`
+    }), logId);
+
+    if (res.success && res.data?.idCliente) {
+      const esMismo = res.data.idCliente === idClienteCreado;
+      if (esMismo) {
+        setCheck('chk-anti-dup-tel', 'pass', 'PASS ✓');
+        log(logId, `Anti-dup TEL OK — mismo IdCliente: ${res.data.idCliente}`, 'ok');
+      } else {
+        setCheck('chk-anti-dup-tel', 'fail', 'FAIL — creó cliente nuevo');
+        log(logId, `IDs distintos: ${idClienteCreado} ≠ ${res.data.idCliente}`, 'err');
+      }
+    }
+  } catch(e) {
+    setCheck('chk-anti-dup-tel', 'fail', 'FAIL ✗');
+    log(logId, 'Error: ' + e.message, 'err');
+  }
+}
+
+async function chkAntiDupCorreo(logId) {
+  if (!idClienteCreado) {
+    setCheck('chk-anti-dup-email', 'fail', 'SKIP (sin ID previo)');
+    return;
+  }
+  setCheck('chk-anti-dup-email', 'running', 'PROBANDO...');
+  try {
+    const ts_id = Date.now();
+    const res = await postScript(basePayload({
+      nombre: `Duplicado Correo ${ts_id}`,
+      telefono: `44288${String(ts_id).slice(-5)}`, // teléfono diferente
+      correo: window._lastCorreo || `debug.${ts_id - 2000}@test.com` // mismo correo
+    }), logId);
+
+    if (res.success && res.data?.idCliente) {
+      const esMismo = res.data.idCliente === idClienteCreado;
+      if (esMismo) {
+        setCheck('chk-anti-dup-email', 'pass', 'PASS ✓');
+        log(logId, `Anti-dup CORREO OK — mismo IdCliente: ${res.data.idCliente}`, 'ok');
+      } else {
+        setCheck('chk-anti-dup-email', 'fail', 'FAIL — creó cliente nuevo');
+        log(logId, `IDs distintos: ${idClienteCreado} ≠ ${res.data.idCliente}`, 'err');
+      }
+    }
+  } catch(e) {
+    setCheck('chk-anti-dup-email', 'fail', 'FAIL ✗');
+    log(logId, 'Error: ' + e.message, 'err');
+  }
+}
+
+async function chkSimSheet(logId) {
+  setCheck('chk-sim-sheet', 'running', 'VERIFICANDO...');
+  if (idSimulacionCreada && idSimulacionCreada.startsWith('SIM-')) {
+    setCheck('chk-sim-sheet', 'pass', 'PASS ✓');
+    log(logId, `ID con formato correcto: ${idSimulacionCreada}`, 'ok');
+  } else {
+    setCheck('chk-sim-sheet', 'fail', 'FAIL — ID sin prefijo SIM-');
+    log(logId, `ID recibido: ${idSimulacionCreada}`, 'err');
+  }
+}
+
+// ─────────────────────────────────────────────
+// PANEL 2 — CLIENTE NUEVO
+// ─────────────────────────────────────────────
+async function testClienteNuevo() {
+  const logId = 'log-t1';
+  document.getElementById(logId).innerHTML = '';
+  log(logId, 'Iniciando test cliente nuevo...', 'inf');
+  try {
+    const payload = basePayload({
+      nombre: document.getElementById('t1-nombre').value,
+      telefono: document.getElementById('t1-telefono').value,
+      correo: document.getElementById('t1-correo').value,
+      capital: +document.getElementById('t1-capital').value,
+      dias: +document.getElementById('t1-dias').value,
+      interesPct: +document.getElementById('t1-interes').value,
+      interesM: +document.getElementById('t1-interesM').value,
+      total: +document.getElementById('t1-total').value,
+      pagoDiario: +document.getElementById('t1-pagoDiario').value,
+      direccion: document.getElementById('t1-dir').value,
+    });
+    const res = await postScript(payload, logId);
+    showResult('res-t1', {
+      success:        res.success,
+      idSimulacion:   res.data?.id,
+      idCliente:      res.data?.idCliente,
+      esClienteNuevo: res.data?.esClienteNuevo,
+      estado:         res.data?.estado,
+      fila:           res.data?.row,
+      processingMs:   res.data?.processingTime
+    }, res.success);
+    if (res.success) {
+      window._lastTelefono = payload.telefono;
+      window._lastCorreo   = payload.correo;
+      log(logId, `✅ IdCliente=${res.data.idCliente} | IdSim=${res.data.id} | Nuevo=${res.data.esClienteNuevo}`, 'ok');
+    }
+  } catch(e) {
+    showResult('res-t1', { error: e.message }, false);
+    log(logId, 'Error: ' + e.message, 'err');
+  }
+}
+
+function randomizarT1() {
+  const ts = Date.now();
+  document.getElementById('t1-nombre').value   = 'Test ' + Math.random().toString(36).substring(2,7).toUpperCase();
+  document.getElementById('t1-telefono').value = '442' + String(ts).slice(-7);
+  document.getElementById('t1-correo').value   = `test.${ts}@debug.com`;
+}
+
+// ─────────────────────────────────────────────
+// PANEL 3 — ANTI-DUPLICADOS
+// ─────────────────────────────────────────────
+let dup_ids = { base: null, tel: null, correo: null };
+
+async function testBase() {
+  const logId = 'log-t2';
+  log(logId, '— Enviando REGISTRO BASE...', 'inf');
+  try {
+    const res = await postScript(basePayload({
+      nombre: document.getElementById('dup-nombre').value,
+      telefono: document.getElementById('dup-tel').value,
+      correo: document.getElementById('dup-correo').value,
+      total: +document.getElementById('dup-total').value,
+      pagoDiario: +document.getElementById('dup-pagoDiario').value,
+      capital: +document.getElementById('dup-capital').value,
+    }), logId);
+    if (res.success) {
+      dup_ids.base = res.data.idCliente;
+      document.getElementById('cmp-id1').value = dup_ids.base;
+      document.getElementById('dup-comparador').style.display = 'block';
+      log(logId, `Base OK — IdCliente: ${dup_ids.base}`, 'ok');
+      compararIds();
+    }
+  } catch(e) { log(logId, 'Error: ' + e.message, 'err'); }
+}
+
+async function testDupTelefono() {
+  const logId = 'log-t2';
+  log(logId, '— Enviando con MISMO TELÉFONO, nombre/correo distintos...', 'inf');
+  const ts = Date.now();
+  try {
+    const res = await postScript(basePayload({
+      nombre: 'Nombre Diferente ' + ts,
+      telefono: document.getElementById('dup-tel').value, // mismo tel
+      correo: `diferente.${ts}@test.com`,                // correo distinto
+      total: +document.getElementById('dup-total').value,
+      pagoDiario: +document.getElementById('dup-pagoDiario').value,
+      capital: +document.getElementById('dup-capital').value,
+    }), logId);
+    if (res.success) {
+      dup_ids.tel = res.data.idCliente;
+      document.getElementById('cmp-id2').value = dup_ids.tel;
+      document.getElementById('dup-comparador').style.display = 'block';
+      log(logId, `Dup Tel — IdCliente: ${dup_ids.tel} | ¿Mismo? ${dup_ids.base === dup_ids.tel ? '✅ SÍ' : '❌ NO — creó duplicado'}`, dup_ids.base === dup_ids.tel ? 'ok' : 'err');
+      compararIds();
+    }
+  } catch(e) { log(logId, 'Error: ' + e.message, 'err'); }
+}
+
+async function testDupCorreo() {
+  const logId = 'log-t2';
+  log(logId, '— Enviando con MISMO CORREO, teléfono distinto...', 'inf');
+  const ts = Date.now();
+  try {
+    const res = await postScript(basePayload({
+      nombre: 'Otro Nombre ' + ts,
+      telefono: `44277${String(ts).slice(-5)}`,         // tel distinto
+      correo: document.getElementById('dup-correo').value, // mismo correo
+      total: +document.getElementById('dup-total').value,
+      pagoDiario: +document.getElementById('dup-pagoDiario').value,
+      capital: +document.getElementById('dup-capital').value,
+    }), logId);
+    if (res.success) {
+      dup_ids.correo = res.data.idCliente;
+      document.getElementById('cmp-id3').value = dup_ids.correo;
+      document.getElementById('dup-comparador').style.display = 'block';
+      log(logId, `Dup Correo — IdCliente: ${dup_ids.correo} | ¿Mismo? ${dup_ids.base === dup_ids.correo ? '✅ SÍ' : '❌ NO — creó duplicado'}`, dup_ids.base === dup_ids.correo ? 'ok' : 'err');
+      compararIds();
+    }
+  } catch(e) { log(logId, 'Error: ' + e.message, 'err'); }
+}
+
+function compararIds() {
+  const el = document.getElementById('cmp-resultado');
+  const { base, tel, correo } = dup_ids;
+  if (!base) return;
+  el.style.display = 'block';
+
+  const telOk    = tel    ? tel    === base : null;
+  const correoOk = correo ? correo === base : null;
+
+  const msgs = [];
+  if (telOk    === true)  msgs.push('✅ Anti-dup TELÉFONO funciona — mismo IdCliente');
+  if (telOk    === false) msgs.push('❌ Anti-dup TELÉFONO FALLÓ — creó cliente duplicado');
+  if (correoOk === true)  msgs.push('✅ Anti-dup CORREO funciona — mismo IdCliente');
+  if (correoOk === false) msgs.push('❌ Anti-dup CORREO FALLÓ — creó cliente duplicado');
+
+  const allOk = (telOk !== false) && (correoOk !== false) && (telOk || correoOk);
+  el.style.background = allOk ? 'rgba(34,197,94,.08)' : 'rgba(244,63,94,.08)';
+  el.style.border     = `1px solid ${allOk ? 'rgba(34,197,94,.3)' : 'rgba(244,63,94,.3)'}`;
+  el.style.color      = allOk ? 'var(--green)' : 'var(--red)';
+  el.innerHTML = msgs.join('<br>');
+}
+
+// ─────────────────────────────────────────────
+// PANEL 4 — EMAIL + WHATSAPP
+// ─────────────────────────────────────────────
+async function testEmailWA() {
+  const logId = 'log-t3';
+  document.getElementById(logId).innerHTML = '';
+  log(logId, 'Enviando solicitud que dispara email + WhatsApp...', 'inf');
+  try {
+    const ts = Date.now();
+    const res = await postScript(basePayload({
+      nombre:  document.getElementById('t3-nombre').value,
+      telefono: document.getElementById('t3-tel').value,
+      correo:   document.getElementById('t3-correo').value,
+      notas:    document.getElementById('t3-notas').value,
+    }), logId);
+    showResult('res-t3', {
+      success:      res.success,
+      mensaje:      res.message,
+      idSimulacion: res.data?.id,
+      idCliente:    res.data?.idCliente,
+      estado:       res.data?.estado
+    }, res.success);
+    if (res.success) {
+      log(logId, '✅ Registro exitoso — el Apps Script debe haber disparado enviarEmail()', 'ok');
+      log(logId, '📬 Revisa la bandeja del EMAIL_DESTINO configurado en el CONFIG del script', 'wrn');
+      log(logId, '📱 El email debe tener un botón verde "Responder por WhatsApp"', 'inf');
+    }
+  } catch(e) {
+    showResult('res-t3', { error: e.message }, false);
+    log(logId, 'Error: ' + e.message, 'err');
+  }
+}
+
+function marcarManual(id, btn) {
+  setCheck(id, 'pass', 'MANUAL ✓');
+  btn.style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// PANEL 5 — MANUAL RAW
+// ─────────────────────────────────────────────
+async function enviarRaw() {
+  const logId = 'log-raw';
+  document.getElementById(logId).innerHTML = '';
+  const resultEl = document.getElementById('raw-result');
+  try {
+    const payload = JSON.parse(document.getElementById('raw-json').value);
+    log(logId, 'Enviando payload raw...', 'inf');
+    const res = await postScript(payload, logId);
+    resultEl.style.display = 'block';
+    resultEl.textContent = JSON.stringify(res, null, 2);
+    resultEl.style.color = res.success ? 'var(--acc)' : 'var(--red)';
+  } catch(e) {
+    resultEl.style.display = 'block';
+    resultEl.textContent = '❌ Error: ' + e.message;
+    resultEl.style.color = 'var(--red)';
+    log(logId, 'Error: ' + e.message, 'err');
+  }
+}
+
+function cargarEjemploUpsert() {
+  document.getElementById('raw-json').value = JSON.stringify({
+    _accion: "upsert_cliente",
+    nombre: "Cliente Editado",
+    telefono: "4420000000",
+    correo: "editado@test.com",
+    ubicacion: "Calle Test 123, Querétaro",
+    cantidadSimulaciones: 5,
+    estado: "Activo"
+  }, null, 2);
+}
+</script>
+</body>
+</html>
